@@ -1,0 +1,15 @@
+{
+  "originHash" : "6bbbb5d9675f5d294a7b1297ec327093b2cfad662aef99ae19ebb7f5050b748c",
+  "pins" : [
+    {
+      "identity" : "appshell",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/doom1337hvh/AppShell.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "3a100a107c4a3c6f9166d5c355b848ce146fc7d8"
+      }
+    }
+  ],
+  "version" : 3
+}
