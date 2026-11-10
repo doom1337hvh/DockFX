@@ -73,7 +73,7 @@ final class Stage {
 
     /// Keeps `style`'s look going along the Dock until `hideAmbient`.
     func showAmbient(_ style: EffectStyle, tiles: [Painter.Tile], tint: CGColor, over layout: DockLayout) {
-        let drawnFor = "\(style) \(layout.frame) \(tiles.map(\.icon)) \(tiles.map(\.color)) \(tint)"
+        let drawnFor = "\(style) \(layout.frame) \(tiles.map(\.icon)) \(tiles.map(\.color)) \(tiles.map(\.badge)) \(tint)"
         guard drawnFor != ambientDrawnFor else { return }
         hideAmbient()
         let painter = open(over: layout, style: style)

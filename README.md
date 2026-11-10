@@ -31,7 +31,7 @@ it, work exactly as before.
 ## Features
 
 - **Four looks:** Glow (a soft glow around the icon), Shine (a band of light across it, like light on glass), Sparkles (small glowing dots that burst off it and drift up) and Ripple (rings spreading from it).
-- **In each icon's own shape:** glows, shines, ripples and the flash behind the sparkles follow the outline of the icon's picture, so a folder glows folder-shaped and the Trash bin-shaped.
+- **In each icon's own shape:** glows, shines, ripples and the flash behind the sparkles follow the outline of the icon's picture, so a folder glows folder-shaped and the Trash bin-shaped. A notification badge counts as part of the icon: glows and ripples go around it, and nothing is drawn over it.
 - **Five moments:** pointing at an icon, an app opening, switching apps, the Dock sliding in, and all the time. Each has its own tab in Settings, with its own look, or none.
 - **Tune each one:** strength, size and speed for every moment, how many sparkles, how many ripple rings, and its own colour.
 - **In each app's colours:** an icon's effect takes the main colour of its icon, so a red icon glows red. Or use your accent colour, white, or a colour of your own.
@@ -179,8 +179,9 @@ macOS doesn't let other apps change the Dock's own animations, so DockFX draws o
   tile 60 times a second and moves the effect with it, fading everything as the Dock slides out
   of sight, and dropping it once the Dock is hidden.
 - **Shapes and colours:** `IconShapes` takes each icon's outline from its picture (the one macOS
-  gives for the app, folder or file), leaving out its soft shadow, and with Core Image blurs it
-  into a glow or grows it into a ring. `IconColors` shrinks the picture to 24 by 24 pixels and
+  gives for the app, folder or file), leaving out its soft shadow, adds the notification badge
+  the Dock reports for it, drawn where and as wide as the Dock draws it, and with Core Image
+  blurs that into a glow or grows it into a ring. `IconColors` shrinks the picture to 24 by 24 pixels and
   averages it, counting colourful pixels most, then brightens the result.
 
 The app itself is SwiftUI in an AppKit shell, with the menu bar icon and Settings window from

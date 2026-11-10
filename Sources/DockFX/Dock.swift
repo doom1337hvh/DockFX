@@ -18,6 +18,8 @@ struct DockItem {
     let url: URL?
     let isApp: Bool
     let isTrash: Bool
+    /// The text of its notification badge, such as a count; nil without one.
+    let badge: String?
     /// To read where it is again later (`Dock.iconFrame(of:)`).
     let element: AXUIElement
 
@@ -62,7 +64,7 @@ final class Dock {
 
     private static let frameAttributes = [kAXPositionAttribute, kAXSizeAttribute] as CFArray
     private static let itemAttributes = [kAXSubroleAttribute, kAXTitleAttribute, kAXPositionAttribute,
-                                         kAXSizeAttribute, kAXURLAttribute] as CFArray
+                                         kAXSizeAttribute, kAXURLAttribute, "AXStatusLabel"] as CFArray
 
     init() {
         // A Dock that stops answering shouldn't hold DockFX up for long.
@@ -193,7 +195,7 @@ final class Dock {
     private func item(_ element: AXUIElement) -> DockItem? {
         var result: CFArray?
         guard AXUIElementCopyMultipleAttributeValues(element, Self.itemAttributes, [], &result) == .success,
-              let values = result as? [AnyObject], values.count == 5 else { return nil }
+              let values = result as? [AnyObject], values.count == 6 else { return nil }
         let subrole = values[0] as? String
         guard subrole != "AXSeparatorDockItem",
               let position = Self.point(values[2]), let size = Self.size(values[3]), size.width > 0
@@ -203,6 +205,7 @@ final class Dock {
                         url: values[4] as? URL,
                         isApp: subrole == "AXApplicationDockItem",
                         isTrash: subrole == "AXTrashDockItem",
+                        badge: (values[5] as? String).flatMap { $0.isEmpty ? nil : $0 },
                         element: element)
     }
 

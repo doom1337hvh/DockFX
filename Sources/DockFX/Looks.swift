@@ -16,6 +16,8 @@ struct Painter {
         var picture: NSImage?
         /// An app's tile, which the Dock draws its picture in at a different size from others'.
         var isApp = true
+        /// Its notification badge's text, which effects in its shape go around.
+        var badge: String?
     }
 
     let edge: DockEdge
@@ -36,6 +38,13 @@ struct Painter {
     func icon(_ look: Look, on tile: Tile, delay: Double = 0, density: Float = 1) -> (layer: CALayer, duration: Double) {
         let container = oriented(tile.icon)
         let side = container.bounds.width
+        // What's in the icon's shape stays the right way up, the way the Dock draws the icon
+        // and its badge, while sparkles still go out from the Dock.
+        let upright = CALayer()
+        upright.bounds = container.bounds
+        upright.position = container.bounds.center
+        upright.setAffineTransform(self.upright)
+        container.addSublayer(upright)
         let start = CACurrentMediaTime() + delay
         var duration = 0.0
         switch look {
@@ -44,21 +53,21 @@ struct Painter {
         case .glow:
             duration = 1.0 * pace
             let glow = glow(around: tile, side: side, strength: strength)
-            glow.position = container.bounds.center
+            glow.position = upright.bounds.center
             animate(glow, "opacity", [0, 1, 0.8, 0], times: [0, 0.2, 0.55, 1], duration: duration, start: start)
-            container.addSublayer(glow)
+            upright.addSublayer(glow)
         case .shine:
             duration = 0.75 * pace
-            container.addSublayer(shine(over: container.bounds,
-                                        shape: IconShapes.silhouette(tile.picture, isApp: tile.isApp, side: side, scale: contentsScale),
-                                        bandWidth: side * 0.55 * size, tint: tile.color, strength: 1.15 * strength,
-                                        duration: duration, start: start))
+            let shape = IconShapes.silhouette(tile.picture, isApp: tile.isApp, badge: tile.badge, .cutOut, side: side,
+                                              scale: contentsScale)
+            upright.addSublayer(shine(over: upright.bounds, shape: shape, bandWidth: side * 0.55 * size,
+                                      tint: tile.color, strength: 1.15 * strength, duration: duration, start: start))
         case .sparkles:
             // A brief soft flash in the icon's shape, as if the dots were light coming off it.
             let flash = glow(around: tile, side: side, strength: 0.5 * strength)
-            flash.position = container.bounds.center
+            flash.position = upright.bounds.center
             animate(flash, "opacity", [0, 1, 0], times: [0, 0.25, 1], duration: 0.6 * pace, start: start)
-            container.addSublayer(flash)
+            upright.addSublayer(flash)
             let burst = dots(over: container.bounds, color: tile.color, start: start, density: density)
             container.addSublayer(burst.layer)
             duration = burst.duration
@@ -69,8 +78,8 @@ struct Painter {
                 let ring = ripple(around: tile, side: side, width: max(1.2, side * 0.045 * (0.6 + 0.4 * strength)),
                                   reach: side * 0.4 * size, opacity: Float(min(1, 0.95 * strength)),
                                   duration: 0.85 * pace, start: start + Double(index) * 0.2 * pace)
-                ring.position = container.bounds.center
-                container.addSublayer(ring)
+                ring.position = upright.bounds.center
+                upright.addSublayer(ring)
             }
         }
         return (container, delay + duration)
@@ -140,6 +149,7 @@ struct Painter {
             for tile in tiles {
                 let glow = glow(around: tile, side: tile.icon.width, strength: 0.7 * strength)
                 glow.position = tile.icon.center
+                glow.setAffineTransform(upright)
                 let position = Double((tile.icon.midX - bounds.minX) / max(bounds.width, 1))
                 animate(glow, "opacity", [0.08, 0.8, 0.08], times: [0, 0.5, 1], duration: period,
                         start: now - (1 - position) * period, timing: .easeInEaseOut, period: period)
@@ -168,23 +178,24 @@ struct Painter {
     /// A soft glow around an icon, in its own shape, brightest at its edge and reaching further
     /// out the bigger the style's size. The icon itself shows through untouched.
     private func glow(around tile: Tile, side: CGFloat, strength: CGFloat) -> CALayer {
-        let reach = side * 0.2 * size
+        let shape = IconShapes.glow(tile.picture, isApp: tile.isApp, badge: tile.badge, side: side,
+                                    reach: side * 0.2 * size, scale: contentsScale)
         let layer = CALayer()
-        layer.bounds = CGRect(x: 0, y: 0, width: side + reach * 4, height: side + reach * 4)
+        layer.bounds = CGRect(x: 0, y: 0, width: shape.size, height: shape.size)
         layer.backgroundColor = tile.color.withAlpha(min(1, 0.8 * strength))
-        layer.mask = mask(IconShapes.glow(tile.picture, isApp: tile.isApp, side: side, reach: reach,
-                                          scale: contentsScale), layer.bounds)
+        layer.mask = mask(shape.image, layer.bounds)
         return layer
     }
 
     /// A ring in an icon's shape that spreads out `reach` points from it and fades.
     private func ripple(around tile: Tile, side: CGFloat, width: CGFloat, reach: CGFloat, opacity: Float,
                         duration: Double, start: CFTimeInterval) -> CALayer {
+        let shape = IconShapes.outline(tile.picture, isApp: tile.isApp, badge: tile.badge, side: side, width: width,
+                                       scale: contentsScale)
         let layer = CALayer()
-        layer.bounds = CGRect(x: 0, y: 0, width: side + width * 4, height: side + width * 4)
+        layer.bounds = CGRect(x: 0, y: 0, width: shape.size, height: shape.size)
         layer.backgroundColor = tile.color
-        layer.mask = mask(IconShapes.outline(tile.picture, isApp: tile.isApp, side: side, width: width,
-                                             scale: contentsScale), layer.bounds)
+        layer.mask = mask(shape.image, layer.bounds)
         animate(layer, "transform.scale", [1, 1 + reach * 2 / side], duration: duration, start: start)
         animate(layer, "opacity", [opacity, 0], duration: duration, start: start)
         return layer
@@ -378,6 +389,15 @@ struct Painter {
     }
 
     // MARK: - Geometry and timing
+
+    /// Undoes `oriented`'s turn, for what has to stay the right way up on screen.
+    private var upright: CGAffineTransform {
+        switch edge {
+        case .bottom: .identity
+        case .left: CGAffineTransform(rotationAngle: .pi / 2)
+        case .right: CGAffineTransform(rotationAngle: -.pi / 2)
+        }
+    }
 
     /// A layer over `rect`, turned so that inside it, out from the Dock is up.
     private func oriented(_ rect: CGRect) -> CALayer {

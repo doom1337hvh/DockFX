@@ -292,7 +292,7 @@ final class DockWatcher {
         case .custom: .hex(style.customColor)
         }
         return Painter.Tile(icon: item.iconFrame, color: color, element: item.element,
-                            picture: IconColors.picture(for: item), isApp: item.isApp)
+                            picture: IconColors.picture(for: item), isApp: item.isApp, badge: item.badge)
     }
 
     /// For effects along the whole Dock that take one colour: white, unless one is chosen.
